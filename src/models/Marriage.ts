@@ -52,7 +52,7 @@ const marriageSchema = new Schema<IMarriage>(
 
     role: {
       type: String,
-      enum: ["admin", "user"],
+      enum: ["admin", "user", "superadmin"],
       default: "user",
     },
   },

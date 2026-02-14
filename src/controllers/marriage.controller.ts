@@ -3,6 +3,7 @@ import Marriage from "../models/Marriage";
 import { asyncHandler } from "../utills/asyncHandler";
 import { generateToken } from "../utills/generateToken";
 import { AuthRequest } from "../types/express";
+import { requireRole } from "../utills/roleCheck";
 
 interface CustomError extends Error {
   statusCode?: number;
@@ -36,6 +37,19 @@ export const createMarriage = asyncHandler(
       throw error;
     }
 
+    // 🔥 CHECK IF ADMIN MOBILE ALREADY EXISTS
+    const existingMarriage = await Marriage.findOne({
+      adminMobileNumber,
+    });
+
+    if (existingMarriage) {
+      const error = new Error(
+        "Marriage already registered with this admin mobile number",
+      ) as CustomError;
+      error.statusCode = 409; // Conflict
+      throw error;
+    }
+
     const marriage = await Marriage.create({
       marriageName,
       marriageDate,
@@ -53,6 +67,7 @@ export const createMarriage = asyncHandler(
   },
 );
 
+// login Marriage
 export const loginMarriage = asyncHandler(
   async (req: Request, res: Response) => {
     const { adminMobileNumber } = req.body;
@@ -71,7 +86,7 @@ export const loginMarriage = asyncHandler(
       throw error;
     }
 
-    const token = generateToken(marriage._id.toString());
+    const token = generateToken(marriage._id.toString(), marriage.role);
 
     res.status(200).json({
       success: true,
@@ -86,6 +101,8 @@ export const loginMarriage = asyncHandler(
  */
 export const getAllMarriages = asyncHandler(
   async (req: Request, res: Response) => {
+    requireRole(req, "admin");
+
     const marriages = await Marriage.find().sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -107,7 +124,7 @@ export const getMyMarriage = asyncHandler(
       throw error;
     }
 
-    const marriage = await Marriage.findById(req.marriageId);
+    const marriage = await Marriage.findById(req.marriageId).select("-_id");
 
     if (!marriage) {
       const error = new Error("Marriage not found") as CustomError;
@@ -133,10 +150,30 @@ export const updateMyMarriage = asyncHandler(
       throw error;
     }
 
+    requireRole(req, "admin");
+
+    // ✅ Only allow these fields
+    const allowedFields = [
+      "marriageName",
+      "marriageDate",
+      "location",
+      "adminMobileNumber",
+      "upiId",
+      "upiPayeeName",
+    ];
+
+    const updateData: Record<string, any> = {};
+
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        updateData[key] = req.body[key];
+      }
+    }
+
     const marriage = await Marriage.findByIdAndUpdate(
       req.marriageId,
-      req.body,
-      { new: true, runValidators: true },
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!marriage) {
@@ -149,8 +186,9 @@ export const updateMyMarriage = asyncHandler(
       success: true,
       data: marriage,
     });
-  },
+  }
 );
+
 
 /**
  * @desc Delete Marriage
@@ -161,6 +199,8 @@ export const updateMyMarriage = asyncHandler(
       error.statusCode = 401;
       throw error;
     }
+
+    requireRole(req, "admin");
 
     const marriage = await Marriage.findByIdAndDelete(req.marriageId);
 

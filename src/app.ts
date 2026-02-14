@@ -5,7 +5,6 @@ import cors from "cors";
 import { corsOptions } from "./middlewares/cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import marriageRoutes from "./routes/marriage.routes";
 import { globalErrorHandler } from "./middlewares/globalErrorHandler";
@@ -17,7 +16,8 @@ const app = express();
 app.use(helmet());
 
 // CORS
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
+app.use(cors())
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -33,8 +33,7 @@ app.use("/api", limiter); // Apply to all API routes
 app.use(express.json({ limit: "10kb" })); // Limit body size
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
-// Data Sanitization against NoSQL injection
-app.use(mongoSanitize());
+ 
 
 // Prevent HTTP Parameter Pollution
 app.use(hpp());

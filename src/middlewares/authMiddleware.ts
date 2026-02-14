@@ -2,8 +2,10 @@ import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AuthRequest } from "../types/express";
 
+ 
 interface JwtPayload {
   id: string;
+  role: "admin" | "user";
 }
 
 export const protect = (
@@ -34,9 +36,10 @@ export const protect = (
     ) as JwtPayload;
 
     req.marriageId = decoded.id;
+    req.role = decoded.role;
 
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       success: false,
       message: "Invalid token",
